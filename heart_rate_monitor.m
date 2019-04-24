@@ -6,16 +6,14 @@
 %| VIDEO BASED HEARTRATE MONITOR                             |%
 % ----------------------------------------------------------- %
 
-close all
-clear all
-clc
+close all; clear; clc
 
 % ------------------------- %
 %| READ VIDEO & VIDEO INFO |%
 % ------------------------- %
 
 % - Modify these parameters: - %
-vName = ('test6.mp4');
+vName = ('test4.mp4');
 Cropped = 1; % 1 for cropped video, 0 for uncropped video.
 find_peaks_start = 5; % on which second should the peak findings start.
 secs_per_measure = 5; % number of seconds used to read one HR out.
