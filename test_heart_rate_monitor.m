@@ -8,28 +8,30 @@
 
 close all; clear; clc
 
+% - Modify these parameters: - %
+max_time = 45; % How long should the software run for? (in seconds)
+measurefreq = 15; % How often should the software estimate HR? (in seconds)
+find_peaks_start = 5; % On which second should the peak findings start for each section. (in seconds).
+% ----------END--------------- %
+
+
 % ------------------------- %
 %| READ VIDEO & VIDEO INFO |%
 % ------------------------- %
+
+% INITIALISATION AND FLAG SETTINGS
 flag = 1;
 clipcounter = 0;
-max_time = 45; % in seconds
-measurefreq = 15; % in seconds
 totalframenum = max_time * 30;
 totalframecounter = 0;
-gcrop = zeros(41,41,totalframenum);
+gcrop = zeros(41,41,totalframenum); % area of interest dimension 41 x 41
 cam = webcam(1);
 clipframecounter = 0;
 oldframeElapsed = 0;
-
 P = 1;
 L = 0;
-
-
-% INITIALISE GREEN CHANNEL MEAN VALUE MATRIX
-        gMeanAllFrames = zeros(totalframenum,2);
-        
-        g_filtered = zeros(totalframenum,1);
+gMeanAllFrames = zeros(totalframenum,2); % initialise green value mean matrix 
+g_filtered = zeros(totalframenum,1); % initialise green value filtered matrix
         
 while flag == 1
 
@@ -37,11 +39,16 @@ while flag == 1
     preview(cam)
     takevideo = 1;
 
+    % if total frames recorded is less than user requested, record more
+    % frames
+    
     while totalframecounter < totalframenum
 
         while takevideo == 1
             videoobj_save = VideoWriter('video_save'); 
             open(videoobj_save)
+            
+            % record a clip according to user setting (interval)
             while clipframecounter < measurefreq * 30
                 f=snapshot(cam);
                 writeVideo(videoobj_save,f);
@@ -50,15 +57,10 @@ while flag == 1
             frameElapsed = frameElapsed + clipframecounter;
             clipframecounter = 0;
             close(videoobj_save)
-            % % clear cam;
 
-            % - Modify these parameters: - %
+            % READ THIS CLIP
             vName = ('video_save.avi');
             Cropped = 0; % 1 for cropped video, 0 for uncropped video.
-            find_peaks_start = 5; % on which second should the peak findings start.
-            secs_per_measure = 5; % number of seconds used to read one HR out.
-            % ----------END--------------- %
-
             vForInfo = VideoReader(vName);
             vNumberOfFrames = get(vForInfo, 'NumberOfFrames');
             vHeight = get(vForInfo, 'Height');
@@ -156,6 +158,8 @@ while flag == 1
 % %         plot(gMeanAllFramesNorm(:,1)/vFrameRate, g_filtered, 'r')
         
          
+        % results of different clips are cascaded into one array, so all
+        % previous calculations retained
         [PKS, LOCS] = findpeaks(g_filtered(oldframeElapsed + find_peaks_start*vFrameRate:frameElapsed));
         
         oldframeElapsed = frameElapsed;
@@ -175,18 +179,15 @@ while flag == 1
         L = 1;
         
         totalframecounter = totalframecounter + measurefreq * 30;
+        
+        % if total number of frames reached, set flag to 0 and exit
+        % program
+        
         if totalframecounter >= totalframenum
             flag = 0;
             takevideo = 0;
+        end        
         end
-        
-        end
-        
-% %         plot((LOCS+find_peaks_start*vFrameRate)/vFrameRate, PKS, 'g*');
-% %         hold off
-
-% %         frameElapsed = 0;
-        
     end  
 end
 figure(4)
