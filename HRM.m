@@ -1,12 +1,25 @@
-% ----------------------------------------------------------- %
-%| JIAKAI REN, ID:22925971                                   |%
-%| DEPARTMENT OF ELECTRICAL AND COMPUTER SYSTEMS ENGINEERING |%
-%| MONASH UNIVERSITY                                         |%
-%| FINAL YEAR PROJECT                                        |%
-%| VIDEO BASED HEARTRATE MONITOR                             |%
-% ----------------------------------------------------------- %
+%=========================================================================%
+%  JIAKAI REN, ID:22925971                                                %
+%  DEPARTMENT OF ELECTRICAL AND COMPUTER SYSTEMS ENGINEERING              %
+%  MONASH UNIVERSITY                                                      %
+%  FINAL YEAR PROJECT                                                     %
+%  VIDEO BASED HEARTRATE MONITOR                                          %
+%=========================================================================%
 
 close all; clear; clc
+
+%=========================================================================%
+%    XXXXXXX  XX     XX       XX       XXX    XX    XXXXXXX  XXXXXXXXX    %
+%   XX        XX     XX     XX  XX     XXXX   XX   XX        XX           %
+%  XX         XXXXXXXXX    XXXXXXXX    XX XX  XX  XX   XXXX  XXXXXXXXX    %
+%   XX        XX     XX   XX      XX   XX  XX XX   XX    XX  XX           %
+%    XXXXXXX  XX     XX  XX        XX  XX   XXXX    XXXXXXX  XXXXXXXXX    %
+%  >> >>> >>>> >>>>> >>>>>> >>>>>>> HERE <<<<<<< <<<<<< <<<<< <<<< <<< << %
+max_time = 120; % How long should the software run for? (in seconds)
+window = 15; % How many seconds of data should be used for HR estimation?
+HRinterval = 1; % HR update interval in seconds.
+%find_peaks_start = 5; % On which second should the peak findings start for each section. (in seconds).
+%=========================================================================%
 
 %======================== VIDEO PREVIEW ==================================%
 % Create axes control.
@@ -30,26 +43,13 @@ rectangle('Position', [thisBB(1),thisBB(2),thisBB(3),thisBB(4)], ...
 hold off
 %=========================================================================%
 
-%=========================================================================%
-%    XXXXXXX  XX     XX       XX       XXX    XX    XXXXXXX  XXXXXXXXX    %
-%   XX        XX     XX     XX  XX     XXXX   XX   XX        XX           %
-%  XX         XXXXXXXXX    XXXXXXXX    XX XX  XX  XX   XXXX  XXXXXXXXX    %
-%   XX        XX     XX   XX      XX   XX  XX XX   XX    XX  XX           %
-%    XXXXXXX  XX     XX  XX        XX  XX   XXXX    XXXXXXX  XXXXXXXXX    %
-%================================   HERE   ===============================%
-max_time = 30; % How long should the software run for? (in seconds)
-window = 15; % How many seconds of data should be used for HR estimation?
-HRinterval = 1; % HR update interval in seconds.
-%find_peaks_start = 5; % On which second should the peak findings start for each section. (in seconds).
-%=========================================================================%
-
 %=================== INPUT CHECK =========================================%
 if window < 2
-    fprintf('Error: Window must be at least 2 seconds!')
+    fprintf('ERROR: Window must be at least 2 seconds!')
 elseif (window >= 2) && (window <= 10)
-    fprintf('Warning: Window may be too small, heart-rate maybe inaccurate. Window larger than 10 seconds is recommended.\n')
+    fprintf('WARNING: Window may be too small and Heart Rate could be inaccurate. Window larger than 10 seconds is recommended.\n')
 elseif window > max_time
-    fprintf('Error: Window size cannot be longer than Max Time!')
+    fprintf('ERROR: Window size cannot be longer than Max Time!')
 end
 %=========================================================================%
 
@@ -62,6 +62,9 @@ peakcounter = 0;
 framecounter = 0;
 j = 0;
 peak = zeros(max_time *3,2);
+HR = zeros(max_time,1);
+c = zeros(6,1);
+time = zeros(max_time+1,1);
 %=========================================================================%
 
 %=================== FILTER ==============================================%
@@ -83,6 +86,7 @@ pause(1);
 %=================== BODY ================================================%
 for i = MFO : totalframenum + MFO - 1
     f = snapshot(cam); % take a frame
+    c = clock;
     gcrop = f(180:220,620:660,2); % crop it
     gmean(i) = mean2(gcrop); % get the average value of that frame 
     framecounter = framecounter + 1;
@@ -105,12 +109,18 @@ for i = MFO : totalframenum + MFO - 1
     if (framecounter == HRinterval * framerate)
        j = j + 1;
        peakselection = peak(peak(:,1) > i - MFO + 1 - windowstartpos,1);
-       HR = length(peakselection) / ((peakselection(end) - peakselection(1)) / framerate) * 60;
-       
-       if j < window
-           fprintf('Filling the window, please wait. (%d)\n', window-j)
+       time(j+1) = c(6);
+       if time(j+1) > time(j)
+           realframerate = framerate/(time(j+1) - time(j));
        else
-       fprintf('Heart Rate: %.1f\n', HR);
+           realframerate = framerate/(60 + time(j+1) - time(j));
+       end
+       HR(j) = (length(peakselection)-1) / ((peakselection(end) - peakselection(1)) / realframerate) * 60;
+       
+       if j * HRinterval < window
+           fprintf('Filling the window, Heart Rate in %d second(s).\n', window-j*HRinterval)
+       else
+       fprintf('Heart Rate: %.0f\n', HR(j));
        end
        
        framecounter = 0;     
@@ -122,10 +132,16 @@ close all
 %=========================================================================%
 
 %=================== PLOT ================================================%
+figure(1)
 plot(1:totalframenum, gmeanf2(MFO:i))
 xlabel('Frame'); ylabel('Green Channel Intensity - Intensity Mean');
 hold on
 plot(1:totalframenum, gmean(MFO:i) - mean(gmean))
 plot(peak(:,1),peak(:,2), 'g*')
 hold off
+
+figure(2)
+plot(window:HRinterval:max_time, HR(ceil(window/HRinterval):floor(max_time/HRinterval)));
+xlabel('Time (s)');
+ylabel('HR (bpm)');
 %=========================================================================%
